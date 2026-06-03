@@ -3,6 +3,7 @@ import json
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 
 # Переменные окружения
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8943971285:AAGuRcUvBoj3fAB86DRSiVUow0l1TkxU94Y")
@@ -47,13 +48,23 @@ def clear_history(user_id: int):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    
+    # Создаём кнопки
+    keyboard = [
+        [KeyboardButton("🆕 Новый диалог")],
+        [KeyboardButton("❓ Помощь")],
+        # Добавьте другие кнопки, если нужно:
+        # [KeyboardButton("📊 Моя статистика")],
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+    
     await update.message.reply_text(
-         f"Привет, {user.first_name}! 👋\n\n"
-        "Я — **«Внутренний компас»**. Я не даю советов и не ставлю диагнозов.\n"
-        "Я здесь, чтобы помочь тебе **услышать себя**. Давай исследовать то, что сейчас внутри.\n\n"
-        "/new — начать новый диалог\n"
-        "/help — помощь",
-        parse_mode="Markdown"
+        f"Привет, {user.first_name}! 👋\n\n"
+        "Я — *Внутренний компас*. Я не даю советов и не ставлю диагнозов.\n"
+        "Я здесь, чтобы помочь тебе *услышать себя*.\n\n"
+        "Просто напиши, что тебя беспокоит, или используй кнопки ниже.",
+        parse_mode="Markdown",
+        reply_markup=reply_markup
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -90,8 +101,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_text = update.message.text
     
-    if user_text.startswith('/'):
+    # Обработка кнопок
+    if user_text == "🆕 Новый диалог":
+        clear_history(user_id)
+        await update.message.reply_text("🧹 Начинаем новый диалог. Расскажи, что у тебя сейчас внутри?")
         return
+    
+    if user_text == "❓ Помощь":
+        await help_command(update, context)
+        return
+    
+    # Остальной код обработки обычных сообщений...
+    # (ваш существующий код)
     
     history = load_history(user_id)
     
