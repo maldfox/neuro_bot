@@ -48,10 +48,12 @@ def clear_history(user_id: int):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     await update.message.reply_text(
-        f"Привет, {user.first_name}! 👋\n\n"
-        "Я — твой психотерапевтический ассистент.\n\n"
-        "/new — новый диалог\n"
-        "/help — помощь"
+         f"Привет, {user.first_name}! 👋\n\n"
+        "Я — **«Внутренний компас»**. Я не даю советов и не ставлю диагнозов.\n"
+        "Я здесь, чтобы помочь тебе **услышать себя**. Давай исследовать то, что сейчас внутри.\n\n"
+        "/new — начать новый диалог\n"
+        "/help — помощь",
+        parse_mode="Markdown"
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
