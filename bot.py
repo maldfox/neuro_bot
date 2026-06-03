@@ -85,12 +85,12 @@ SYSTEM_PROMPT = """ВАЖНЕЙШЕЕ ПРАВИЛО: ТЫ ГОВОРИШЬ ТО
 
 # ========== КНОПКИ ==========
 def get_main_keyboard():
-    """Возвращает клавиатуру с кнопками"""
     keyboard = [
         [KeyboardButton("🆕 Новый диалог")],
         [KeyboardButton("❓ Помощь")],
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+    # one_time_keyboard=True — клавиатура исчезнет после первого нажатия
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
 # ========== ОБРАБОТЧИКИ КОМАНД ==========
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
