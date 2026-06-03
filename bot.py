@@ -94,6 +94,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     history = load_history(user_id)
+    
+    # Если это первое сообщение пользователя (история пуста)
+    if not history:
+        # Отправляем приветствие
+        user = update.effective_user
+        await update.message.reply_text(
+            f"Привет, {user.first_name}! 👋\n\n"
+            "Я — *Внутренний компас*. Я не даю советов и не ставлю диагнозов.\n"
+            "Я здесь, чтобы помочь тебе *услышать себя*. Давай исследовать то, что сейчас внутри.\n\n"
+            "/new — новый диалог\n"
+            "/help — помощь",
+            parse_mode="Markdown"
+        )
+    
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [{"role": "user", "content": user_text}]
     
     reply = await call_deepseek(messages)
