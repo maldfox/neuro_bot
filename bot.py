@@ -1,15 +1,25 @@
-# bot.py
-import json
 import os
+import json
 import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from telegram.request import HTTPXRequest
 
-from config import TELEGRAM_TOKEN, DEEPSEEK_API_KEY, DEEPSEEK_API_URL, MODEL_NAME, MAX_TOKENS, TEMPERATURE
-from prompt import SYSTEM_PROMPT
+# Переменные окружения
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8943971285:AAGuRcUvBoj3fAB86DRSiVUow0l1TkxU94Y")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-....")  # замените на ваш ключ
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+MODEL_NAME = "deepseek-reasoner"
+MAX_TOKENS = 1000
+TEMPERATURE = 0.7
 
-# Папка для хранения истории диалогов
+# Промпт
+SYSTEM_PROMPT = """Ты — психотерапевтический ассистент. Ты не заменяешь живого специалиста, но создаёшь пространство для честного и бережного самоисследования.
+
+Твой стиль: живой, тёплый, внимательный и глубокий. Отвечай коротко — 2-5 предложений. Не давай диагнозов и не рекомендуй лекарства.
+
+Если пользователь говорит о желании причинить себе вред — немедленно предложи позвонить на горячую линию 112 или 8-800-2000-122."""
+
+# Папка для истории
 HISTORY_DIR = "histories"
 os.makedirs(HISTORY_DIR, exist_ok=True)
 
@@ -37,79 +47,42 @@ def clear_history(user_id: int):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    welcome_text = (
+    await update.message.reply_text(
         f"Привет, {user.first_name}! 👋\n\n"
-        "Я — твой психотерапевтический ассистент. Я здесь, чтобы помочь тебе исследовать себя, "
-        "а не давать быстрые советы или диагнозы.\n\n"
-        "📝 *Как я работаю:*\n"
-        "• Отвечаю коротко и по делу\n"
-        "• Задаю глубокие вопросы\n"
-        "• Помогаю увидеть то, что ты можешь не замечать\n\n"
-        "🎮 *Режимы:*\n"
-        "• `просто побудь рядом` — просто поддержка\n"
-        "• `разбери глубоко` — глубокий разбор\n"
-        "• `дай взгляд со стороны` — структурированный анализ\n"
-        "• `помоги увидеть слепые зоны` — мягкие указания\n"
-        "• `мне нужен только вопрос` — только один вопрос\n\n"
-        "⚡ *Команды:*\n"
-        "/new — начать новый диалог (очистить историю)\n"
-        "/help — помощь\n\n"
-        "Голосовые сообщения тоже поддерживаются 🎤\n\n"
-        "С чего хочешь начать?"
+        "Я — твой психотерапевтический ассистент.\n\n"
+        "/new — новый диалог\n"
+        "/help — помощь"
     )
-    await update.message.reply_text(welcome_text, parse_mode="Markdown")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = (
-        "📖 *Помощь*\n\n"
-        "Просто напиши мне, что тебя беспокоит.\n\n"
-        "*Режимы:*\n"
-        "• `просто побудь рядом` — поддержка без анализа\n"
-        "• `разбери глубоко` — глубокое исследование\n"
-        "• `дай взгляд со стороны` — структура и факты\n"
-        "• `помоги увидеть слепые зоны` — мягкие указания\n"
-        "• `мне нужен только вопрос` — один сильный вопрос\n\n"
-        "*Команды:*\n"
-        "/new — начать новый диалог\n"
-        "/help — это сообщение\n\n"
-        "*Безопасность:*\n"
+    await update.message.reply_text(
+        "📖 Просто напиши, что тебя беспокоит.\n\n"
         "Если ты в кризисе — позвони 112 или 8-800-2000-122."
     )
-    await update.message.reply_text(help_text, parse_mode="Markdown")
 
 async def new_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    clear_history(user_id)
-    await update.message.reply_text("🧹 Начинаем новый диалог. Расскажи, что у тебя сейчас внутри?")
+    clear_history(update.effective_user.id)
+    await update.message.reply_text("🧹 Начинаем новый диалог.")
 
 async def call_deepseek(messages: list) -> str:
-    """Вызов DeepSeek-R1 через официальный API DeepSeek"""
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json",
     }
-    
     payload = {
         "model": MODEL_NAME,
         "messages": messages,
         "max_tokens": MAX_TOKENS,
         "temperature": TEMPERATURE,
-        "stream": False
     }
-    
     try:
-        response = requests.post(
-            DEEPSEEK_API_URL,
-            headers=headers,
-            json=payload,
-            timeout=45
-        )
+        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         return result["choices"][0]["message"]["content"]
     except Exception as e:
-        print(f"DeepSeek API error: {e}")
-        return "Извини, сейчас что-то пошло не так. Попробуй ещё раз или напиши позже."
+        print(f"DeepSeek error: {e}")
+        return "Извини, сейчас что-то пошло не так. Попробуй ещё раз."
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -119,14 +92,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     history = load_history(user_id)
-    
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
-    messages.extend(history)
-    messages.append({"role": "user", "content": user_text})
-    
-    await update.message.chat.send_action(action="typing")
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history + [{"role": "user", "content": user_text}]
     
     reply = await call_deepseek(messages)
     
@@ -136,88 +102,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(reply)
 
-async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    
-    await update.message.chat.send_action(action="typing")
-    
-    voice = update.message.voice
-    file = await context.bot.get_file(voice.file_id)
-    
-    ogg_path = f"temp_voice_{user_id}.ogg"
-    await file.download_to_drive(ogg_path)
-    
-    await update.message.chat.send_action(action="typing")
-    
-    import openai
-    
-    openai.api_key = DEEPSEEK_API_KEY
-    openai.base_url = "https://api.deepseek.com/v1"
-    
-    try:
-        with open(ogg_path, "rb") as audio_file:
-            transcription = openai.Audio.transcribe(
-                model="whisper-1",
-                file=audio_file,
-                language="ru"
-            )
-        recognized_text = transcription.get("text", "")
-        
-        os.remove(ogg_path)
-        
-        if not recognized_text:
-            await update.message.reply_text("Не удалось распознать голос. Попробуй записать чётче или напиши текстом.")
-            return
-        
-        history = load_history(user_id)
-        
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT}
-        ]
-        messages.extend(history)
-        messages.append({"role": "user", "content": f"[Голосовое сообщение]: {recognized_text}"})
-        
-        reply = await call_deepseek(messages)
-        
-        history.append({"role": "user", "content": f"[голос]: {recognized_text}"})
-        history.append({"role": "assistant", "content": reply})
-        save_history(user_id, history)
-        
-        await update.message.reply_text(f"🎤 *Вы сказали:* {recognized_text}\n\n{reply}", parse_mode="Markdown")
-        
-    except Exception as e:
-        print(f"Voice error: {e}")
-        await update.message.reply_text("Не получилось распознать голос. Попробуй написать текстом.")
-        if os.path.exists(ogg_path):
-            os.remove(ogg_path)
-
 def main():
-    # ПРАВИЛЬНЫЙ СПОСОБ ДЛЯ ВАШЕЙ ВЕРСИИ PTB
-    # Используем proxy (не proxy_url) — это параметр HTTPXRequest
- #   PROXY = "socks5://192.252.208.71:14282"
- #   PROXY = "socks5://51.89.239.48:1080"
- #   PROXY = "socks5://45.140.166.115:1080"  
- #   PROXY = "socks5://185.211.238.144:1080"
- #   PROXY = "socks5://192.252.208.71:14282"
- #   PROXY = "socks5://91.214.109.181:1080"
- #   PROXY = "http://45.140.166.115:1080"
- #   PROXY = "http://185.211.238.144:1080"
-    
-    # Создаём объект HTTPXRequest с прокси
-    request = HTTPXRequest(proxy=PROXY)
-    
-    # Создаём приложение с этим request
-    app = Application.builder().token(TELEGRAM_TOKEN).request(request).build()
+    # БЕЗ ПРОКСИ — обычный запуск
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("new", new_dialog))
-    
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     
-    print("✅ Бот Внутренний Компас запущен с прокси...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    print("✅ Бот запущен и работает...")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
