@@ -151,6 +151,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Если пользователь зарегистрировался только что (first_seen совпадает с текущим временем в пределах минуты)
     if datetime.now() - datetime.fromisoformat(first_seen) < timedelta(seconds=60):
+        print(f"Пытаюсь отправить уведомление админу {ADMIN_ID}")
+try:
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=f"📝 *Новая обратная связь*\n\n👤 От: {user.first_name} (@{user.username}) [ID: {user_id}]\n💬 Сообщение:\n{user_text}",
+        parse_mode="Markdown"
+    )
+    print("✅ Уведомление отправлено")
+except Exception as e:
+    print(f"❌ Ошибка: {e}")
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=f"🆕 *Новый пользователь!*\n\n👤 {user.first_name} (@{user.username})\n📊 Всего пользователей: {stats['total']}",
