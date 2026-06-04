@@ -2,3 +2,4 @@ python-telegram-bot==20.7
 requests==2.31.0
 openai==1.30.0
 ffmpeg-python
+pytz
